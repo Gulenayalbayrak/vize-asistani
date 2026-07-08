@@ -2,84 +2,69 @@ import streamlit as st
 import pandas as pd
 from fpdf import FPDF
 
-# PDF oluşturma fonksiyonu (Değişmedi)
-def pdf_olustur(ulke, data, secilen_evraklar, yeni_ihtimal):
+# PDF Fonksiyonu
+def pdf_olustur(ulke, secilenler, ihtimal):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
-    baslik = f"{ulke} Vize Basvuru Raporu".encode('latin-1', 'replace').decode('latin-1')
-    pdf.cell(200, 10, txt=baslik, ln=True, align='C')
+    pdf.cell(200, 10, txt=f"{ulke} Vize Analiz Raporu", ln=True, align='C')
     pdf.set_font("Arial", size=12)
     pdf.ln(10)
-    pdf.cell(200, 10, txt=f"Guncellenmis Onay Ihtimali: %{yeni_ihtimal}", ln=True)
-    pdf.ln(5)
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(200, 10, txt="Sunulan Belgeler:", ln=True)
-    pdf.set_font("Arial", size=12)
-    for doc in secilen_evraklar:
+    pdf.cell(200, 10, txt=f"Onay Ihtimali: %{ihtimal}", ln=True)
+    for doc in secilenler:
         pdf.cell(200, 10, txt=f"- {doc}", ln=True)
-    file_name = "vize_analiz_raporu.pdf"
+    file_name = "vize_raporu.pdf"
     pdf.output(file_name)
     return file_name
 
-# Sayfa Yapılandırması
-st.set_page_config(page_title="Vize Uzmani Pro", layout="wide")
+st.set_page_config(page_title="Vize Uzmani", layout="wide")
 
-# Zorunlu belgeler listesi
-ZORUNLU_BELGELER = ["Pasaport", "Sigorta Policesi", "Ucak Rezervasyonu"]
-
-ulke_bilgileri = {
-    "Almanya": {"onay": 85, "ekstra": "Kargo: 15 Euro"},
-    "Ispanya": {"onay": 82, "ekstra": "Ekspres Fark: 40 Euro"},
-    "Italya": {"onay": 78, "ekstra": "Randevu Ucreti: 20 Euro"}
+# Tüm veriler
+ulke_verileri = {
+    "Almanya": 85, "Ispanya": 82, "Italya": 78, "Fransa": 75, 
+    "Hollanda": 88, "Belcika": 70, "Yunanistan": 92
 }
-
 tum_evraklar = [
     "Pasaport", "Sigorta Policesi", "Ucak Rezervasyonu", "Otel Rezervasyonu", 
-    "Banka Hesap Dokumu", "Maas Bordrosu", "Davetiye", "Fotograf"
+    "Banka Hesap Dokumu", "Maas Bordrosu", "Tapu", "Arac Ruhsati",
+    "Isyeri Izin", "Vergi Levhasi", "Davetiye", "Fotograf"
 ]
+ZORUNLU = ["Pasaport", "Sigorta Policesi", "Ucak Rezervasyonu"]
 
-st.title("🌍 Vize Uzmani: Akilli Kontrol Sistemi")
-ulke = st.selectbox("Ulke Seciniz:", list(ulke_bilgileri.keys()))
+# Otomatik yönlendirme için State yönetimi
+if 'nav' not in st.session_state: st.session_state.nav = "Belgelerim"
 
-# Session State ile sayfa kontrolü
-if 'current_tab' not in st.session_state:
-    st.session_state.current_tab = "Belgelerim"
+# Menü
+nav = st.radio("Navigasyon:", ["Belgelerim", "Analiz"], index=["Belgelerim", "Analiz"].index(st.session_state.nav), horizontal=True)
 
-tab1, tab2, tab3 = st.tabs(["📄 Belgelerim", "📊 Analiz", "⚠️ Yasal Bilgiler"])
-
-with tab1:
-    st.subheader("Elinde Olan Belgeleri Sec:")
+if nav == "Belgelerim":
+    st.title("📄 Belgelerim")
+    ulke = st.selectbox("Ulke:", list(ulke_verileri.keys()))
     secilenler = []
     cols = st.columns(3)
     for i, evrak in enumerate(tum_evraklar):
-        if cols[i % 3].checkbox(evrak, key=evrak):
-            secilenler.append(evrak)
+        if cols[i % 3].checkbox(evrak, key=evrak): secilenler.append(evrak)
     
-    # Devam Et Butonu
     if st.button("Analize Git ->"):
-        # Zorunlu kontrolü
-        eksikler = [b for b in ZORUNLU_BELGELER if b not in secilenler]
+        eksikler = [b for b in ZORUNLU if b not in secilenler]
         if eksikler:
-            st.error(f"Eksik belgeler var: {', '.join(eksikler)}. Lutfen kontrol ediniz!")
+            st.error(f"Eksik zorunlu belgeler: {', '.join(eksikler)}")
         else:
-            st.success("Tüm zorunlu belgeler tamam! Analiz sekmesine geçebilirsiniz.")
-            st.session_state.secilenler = secilenler # Analiz için veriyi sakla
+            st.session_state.secilenler = secilenler
+            st.session_state.secilen_ulke = ulke
+            st.session_state.nav = "Analiz"
+            st.rerun()
 
-with tab2:
-    st.subheader("Vize Analiz Sonucu")
+elif nav == "Analiz":
     if 'secilenler' in st.session_state:
-        base_onay = ulke_bilgileri[ulke]["onay"]
-        yeni_onay = min(base_onay + (len(st.session_state.secilenler) * 2), 98)
-        st.metric("Tahmini Vize Onay Ihtimali", f"%{round(yeni_onay, 1)}")
-        st.progress(yeni_onay/100)
+        st.title("📊 Analiz Sonucu")
+        ulke = st.session_state.secilen_ulke
+        ihtimal = min(ulke_verileri[ulke] + (len(st.session_state.secilenler) * 2), 98)
+        st.metric("Onay Ihtimali", f"%{ihtimal}")
+        st.progress(ihtimal/100)
         
-        if st.button("Raporu Indir"):
-            pdf_dosyasi = pdf_olustur(ulke, ulke_bilgileri[ulke], st.session_state.secilenler, round(yeni_onay, 1))
-            with open(pdf_dosyasi, "rb") as f:
-                st.download_button("Indir", f, file_name=pdf_dosyasi, mime="application/pdf")
+        pdf_dosyasi = pdf_olustur(ulke, st.session_state.secilenler, ihtimal)
+        with open(pdf_dosyasi, "rb") as f:
+            st.download_button("Raporu Indir", f, file_name=pdf_dosyasi, mime="application/pdf")
     else:
-        st.warning("Lutfen once belgelerinizi secip analize baslayin.")
-
-with tab3:
-    st.info(f"Ekstra Tahmini Maliyetler: {ulke_bilgileri[ulke]['ekstra']}")
+        st.warning("Lutfen once belgeleri secin!")
