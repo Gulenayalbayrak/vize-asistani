@@ -1,5 +1,23 @@
 import streamlit as st
 import pandas as pd
+from fpdf import FPDF
+
+# PDF oluşturma fonksiyonu
+def pdf_olustur(ulke, data):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, txt=f"{ulke} Vize Bilgilendirme Formu", ln=True, align='C')
+    pdf.set_font("Arial", size=12)
+    pdf.ln(10)
+    pdf.cell(200, 10, txt=f"Vize Harci: {data['harc']} Euro", ln=True)
+    pdf.cell(200, 10, txt=f"Sigorta: {data['sigorta']} Euro", ln=True)
+    pdf.cell(200, 10, txt=f"Servis Bedeli: {data['servis']} Euro", ln=True)
+    pdf.cell(200, 10, txt=f"Toplam Tahmini: {sum([data['harc'], data['sigorta'], data['servis']])} Euro", ln=True)
+    
+    file_name = f"{ulke}_vize_bilgi.pdf"
+    pdf.output(file_name)
+    return file_name
 
 # Sayfa Yapılandırması
 st.set_page_config(page_title="Vize Uzmanı Pro", page_icon="✈️", layout="wide")
@@ -24,7 +42,6 @@ if ulke == "Seçiniz...":
     st.title("✈️ Avrupa Vize ve Seyahat Portalı")
     st.info("Ülkelerin vize onay istatistiklerini aşağıdan inceleyebilirsiniz.")
     
-    # Onay Grafiği için veri hazırlama
     df = pd.DataFrame.from_dict(ulke_verileri, orient='index')
     st.subheader("📊 Ülke Bazlı Vize Onay Oranları (%)")
     st.bar_chart(df["onay"])
@@ -45,6 +62,7 @@ else:
         st.subheader("Gerekli Evrak Listesi")
         for doc in data["evraklar"]:
             st.checkbox(doc)
+            
     with t2:
         st.subheader("Tahmini Maliyet Hesaplama")
         st.table({"Kalem": ["Vize Harcı", "Sigorta", "Servis"], "Tutar (€)": [data["harc"], data["sigorta"], data["servis"]]})
@@ -53,3 +71,13 @@ else:
         
         st.write(f"Vize Onay İhtimali: %{data['onay']}")
         st.progress(data["onay"]/100)
+        
+        # PDF İndirme Butonu
+        pdf_dosyasi = pdf_olustur(ulke, data)
+        with open(pdf_dosyasi, "rb") as f:
+            st.download_button(
+                label="📄 PDF Olarak İndir",
+                data=f,
+                file_name=pdf_dosyasi,
+                mime="application/pdf"
+            )
