@@ -2,23 +2,38 @@ import streamlit as st
 import pandas as pd
 from fpdf import FPDF
 
-# PDF oluşturma fonksiyonu (Türkçe karakter destekli)
+# PDF oluşturma fonksiyonu (Türkçe karakter destekli ve zenginleştirilmiş)
 def pdf_olustur(ulke, data):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
     
-    # Türkçe karakterleri latin-1'e zorlayarak kodluyoruz
-    baslik = f"{ulke} Vize Bilgilendirme Formu".encode('latin-1', 'replace').decode('latin-1')
+    # Başlık
+    baslik = f"{ulke} Vize Basvuru Raporu".encode('latin-1', 'replace').decode('latin-1')
     pdf.cell(200, 10, txt=baslik, ln=True, align='C')
     
     pdf.set_font("Arial", size=12)
     pdf.ln(10)
     
+    # Evraklar Listesi
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(200, 10, txt="Gerekli Evraklar:", ln=True)
+    pdf.set_font("Arial", size=12)
+    for doc in data["evraklar"]:
+        evrak = f"- {doc}".encode('latin-1', 'replace').decode('latin-1')
+        pdf.cell(200, 10, txt=evrak, ln=True)
+    
+    pdf.ln(5)
+    
+    # Maliyetler
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(200, 10, txt="Maliyet Analizi:", ln=True)
+    pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt=f"Vize Harci: {data['harc']} Euro", ln=True)
     pdf.cell(200, 10, txt=f"Sigorta: {data['sigorta']} Euro", ln=True)
     pdf.cell(200, 10, txt=f"Servis Bedeli: {data['servis']} Euro", ln=True)
     toplam = sum([data['harc'], data['sigorta'], data['servis']])
+    pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt=f"Toplam Tahmini: {toplam} Euro", ln=True)
     
     file_name = "vize_raporu.pdf"
@@ -77,6 +92,7 @@ else:
         st.write(f"Vize Onay Ihtimali: %{data['onay']}")
         st.progress(data["onay"]/100)
         
+        # PDF İndirme Butonu
         pdf_dosyasi = pdf_olustur(ulke, data)
         with open(pdf_dosyasi, "rb") as f:
             st.download_button("📄 PDF Olarak Indir", f, file_name=pdf_dosyasi, mime="application/pdf")
