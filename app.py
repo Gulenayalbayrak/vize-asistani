@@ -2,97 +2,67 @@ import streamlit as st
 import pandas as pd
 from fpdf import FPDF
 
-# PDF oluşturma fonksiyonu (Türkçe karakter destekli ve zenginleştirilmiş)
-def pdf_olustur(ulke, data):
+# PDF oluşturma fonksiyonu
+def pdf_olustur(ulke, data, secilen_evraklar, yeni_ihtimal):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
-    
-    # Başlık
-    baslik = f"{ulke} Vize Basvuru Raporu".encode('latin-1', 'replace').decode('latin-1')
+    baslik = f"{ulke} Vize Analiz Raporu".encode('latin-1', 'replace').decode('latin-1')
     pdf.cell(200, 10, txt=baslik, ln=True, align='C')
     
     pdf.set_font("Arial", size=12)
     pdf.ln(10)
     
-    # Evraklar Listesi
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(200, 10, txt="Gerekli Evraklar:", ln=True)
-    pdf.set_font("Arial", size=12)
-    for doc in data["evraklar"]:
-        evrak = f"- {doc}".encode('latin-1', 'replace').decode('latin-1')
-        pdf.cell(200, 10, txt=evrak, ln=True)
-    
+    pdf.cell(200, 10, txt=f"Guncellenmis Onay Ihtimali: %{yeni_ihtimal}", ln=True)
     pdf.ln(5)
     
-    # Maliyetler
     pdf.set_font("Arial", 'B', 14)
-    pdf.cell(200, 10, txt="Maliyet Analizi:", ln=True)
+    pdf.cell(200, 10, txt="Sunulan Belgeler:", ln=True)
     pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt=f"Vize Harci: {data['harc']} Euro", ln=True)
-    pdf.cell(200, 10, txt=f"Sigorta: {data['sigorta']} Euro", ln=True)
-    pdf.cell(200, 10, txt=f"Servis Bedeli: {data['servis']} Euro", ln=True)
-    toplam = sum([data['harc'], data['sigorta'], data['servis']])
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(200, 10, txt=f"Toplam Tahmini: {toplam} Euro", ln=True)
+    for doc in secilen_evraklar:
+        pdf.cell(200, 10, txt=f"- {doc}", ln=True)
     
-    file_name = "vize_raporu.pdf"
+    file_name = "vize_analiz_raporu.pdf"
     pdf.output(file_name)
     return file_name
 
 # Sayfa Yapılandırması
-st.set_page_config(page_title="Vize Uzmanı Pro", page_icon="✈️", layout="wide")
+st.set_page_config(page_title="Vize Uzmani Pro", layout="wide")
 
-# 1. VERİTABANI
+# Veritabanı ve Evrak Havuzu
+tum_evraklar = [
+    "Pasaport", "Sigorta Poliçesi", "Ucak Rezervasyonu", "Otel Rezervasyonu", 
+    "Banka Hesap Dokumu", "Maas Bordrosu", "Tapu Fotokopisi", "Arac Ruhsati",
+    "Isyeri Izin Belgesi", "Vergi Levhasi", "Davetiye", "Fotograf",
+    "Adli Sicil Kaydi", "Tam Tekmil Vukuatli Nufus Kayit Ornegi", "Ikametgah",
+    "Askerlik Durum Belgesi", "Diploma", "Kredi Karti Ekstresi"
+]
+
 ulke_verileri = {
-    "Almanya": {"evraklar": ["Pasaport", "Sigorta", "Uçak"], "harc": 90, "sigorta": 25, "servis": 30, "onay": 85},
-    "Ispanya": {"evraklar": ["Pasaport", "Otel", "Banka"], "harc": 90, "sigorta": 20, "servis": 30, "onay": 82},
-    "Italya": {"evraklar": ["Davet", "Sigorta", "Gelir"], "harc": 80, "sigorta": 25, "servis": 30, "onay": 78},
-    "Fransa": {"evraklar": ["Banka", "Uçak", "Otel"], "harc": 80, "sigorta": 20, "servis": 30, "onay": 75},
-    "Hollanda": {"evraklar": ["Sigorta", "Maas", "Pasaport"], "harc": 90, "sigorta": 25, "servis": 30, "onay": 88},
-    "Belcika": {"evraklar": ["Pasaport", "Foto", "Sigorta"], "harc": 90, "sigorta": 20, "servis": 30, "onay": 70},
-    "Yunanistan": {"evraklar": ["Otel", "Uçak", "Sigorta"], "harc": 80, "sigorta": 20, "servis": 30, "onay": 92}
+    "Almanya": {"onay": 85}, "Ispanya": {"onay": 82}, "Italya": {"onay": 78}
 }
 
-# 2. SIDEBAR
-st.sidebar.title("Menu")
-ulke = st.sidebar.selectbox("Ulke Seciniz:", ["Seciniz..."] + list(ulke_verileri.keys()))
+st.title("🌍 Vize Uzmani: Akilli Analiz")
+ulke = st.selectbox("Ulke Seciniz:", list(ulke_verileri.keys()))
 
-# 3. ANA EKRAN
-if ulke == "Seciniz...":
-    st.title("✈️ Avrupa Vize ve Seyahat Portali")
-    st.info("Ulkelerin vize onay istatistiklerini asagidan inceleyebilirsiniz.")
-    
-    df = pd.DataFrame.from_dict(ulke_verileri, orient='index')
-    st.subheader("📊 Ulke Bazli Vize Onay Oranlari (%)")
-    st.bar_chart(df["onay"])
-    
-    st.write("---")
-    st.subheader("Sistem Istatistikleri")
-    col1, col2 = st.columns(2)
-    col1.metric("Desteklenen Ulke", len(ulke_verileri))
-    col2.metric("Ortalama Onay Orani", f"{round(df['onay'].mean(), 1)}%")
+# 15-20 Seçenekli Checkbox Listesi
+st.subheader("Elinde Olan Belgeleri Sec:")
+secilenler = []
+cols = st.columns(3) # Ekranı 3 sütuna bölerek şık görünüm sağladık
+for i, evrak in enumerate(tum_evraklar):
+    if cols[i % 3].checkbox(evrak):
+        secilenler.append(evrak)
 
-else:
-    data = ulke_verileri[ulke]
-    st.title(f"🌍 {ulke} Vize Asistani")
-    
-    t1, t2 = st.tabs(["📄 Gerekli Evraklar", "💰 Maliyet Analizi"])
-    with t1:
-        st.subheader("Gerekli Evrak Listesi")
-        for doc in data["evraklar"]:
-            st.checkbox(doc)
-            
-    with t2:
-        st.subheader("Tahmini Maliyet Hesaplama")
-        st.table({"Kalem": ["Vize Harci", "Sigorta", "Servis"], "Tutar (€)": [data["harc"], data["sigorta"], data["servis"]]})
-        toplam = sum([data['harc'], data['sigorta'], data['servis']])
-        st.metric("Toplam Tahmini", f"{toplam} €")
-        
-        st.write(f"Vize Onay Ihtimali: %{data['onay']}")
-        st.progress(data["onay"]/100)
-        
-        # PDF İndirme Butonu
-        pdf_dosyasi = pdf_olustur(ulke, data)
-        with open(pdf_dosyasi, "rb") as f:
-            st.download_button("📄 PDF Olarak Indir", f, file_name=pdf_dosyasi, mime="application/pdf")
+# Onay İhtimali Hesaplama Mantığı (Basit bir puanlama)
+base_onay = ulke_verileri[ulke]["onay"]
+yeni_onay = min(base_onay + (len(secilenler) * 0.5), 98) # Her belge %0.5 artırır
+
+st.write("---")
+st.metric("Tahmini Vize Onay Ihtimali", f"%{round(yeni_onay, 1)}")
+st.progress(yeni_onay/100)
+
+# PDF İndirme
+if st.button("Analiz Raporunu PDF Olarak Indir"):
+    pdf_dosyasi = pdf_olustur(ulke, ulke_verileri[ulke], secilenler, round(yeni_onay, 1))
+    with open(pdf_dosyasi, "rb") as f:
+        st.download_button("Indir", f, file_name=pdf_dosyasi, mime="application/pdf")
