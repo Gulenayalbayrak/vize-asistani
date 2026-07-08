@@ -2,12 +2,12 @@ import streamlit as st
 import pandas as pd
 from fpdf import FPDF
 
-# PDF Fonksiyonu (Hem Analiz hem Maliyet içerecek şekilde)
+# PDF fonksiyonu
 def pdf_olustur(ulke, secilenler, ihtimal, data):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt=f"{ulke} Vize Analiz ve Maliyet Raporu", ln=True, align='C')
+    pdf.cell(200, 10, txt=f"{ulke} Vize Analiz Raporu", ln=True, align='C')
     pdf.set_font("Arial", size=12)
     pdf.ln(10)
     pdf.cell(200, 10, txt=f"Onay Ihtimali: %{ihtimal}", ln=True)
@@ -24,28 +24,31 @@ def pdf_olustur(ulke, secilenler, ihtimal, data):
 
 st.set_page_config(page_title="Vize Uzmani", layout="wide")
 
-# Veriler (Ücretler ve Ekstralar geri eklendi)
+# Veriler
 ulke_verileri = {
     "Almanya": {"onay": 85, "harc": 90, "servis": 30, "ekstra": "Kargo: 15€, Sigorta: 25€"},
     "Ispanya": {"onay": 82, "harc": 90, "servis": 30, "ekstra": "Ekspres Fark: 40€, Sigorta: 20€"},
-    "Italya": {"onay": 78, "harc": 80, "servis": 30, "ekstra": "Randevu Ücreti: 20€, Sigorta: 25€"},
-    "Fransa": {"onay": 75, "harc": 80, "servis": 30, "ekstra": "Kargo: 15€, Sigorta: 20€"},
-    "Hollanda": {"onay": 88, "harc": 90, "servis": 30, "ekstra": "Sigorta: 25€"},
-    "Belcika": {"onay": 70, "harc": 90, "servis": 30, "ekstra": "Sigorta: 20€"},
-    "Yunanistan": {"onay": 92, "harc": 80, "servis": 30, "ekstra": "Sigorta: 20€"}
+    "Italya": {"onay": 78, "harc": 80, "servis": 30, "ekstra": "Randevu Ücreti: 20€, Sigorta: 25€"}
 }
-tum_evraklar = ["Pasaport", "Sigorta Policesi", "Ucak Rezervasyonu", "Otel Rezervasyonu", "Banka Hesap Dokumu", "Maas Bordrosu", "Davetiye", "Fotograf"]
+tum_evraklar = ["Pasaport", "Sigorta Policesi", "Ucak Rezervasyonu", "Otel Rezervasyonu", "Banka Hesap Dokumu", "Maas Bordrosu"]
 ZORUNLU = ["Pasaport", "Sigorta Policesi", "Ucak Rezervasyonu"]
 
-# Navigasyon
-if 'nav' not in st.session_state: st.session_state.nav = "Belgelerim"
-nav = st.radio("Sayfalar:", ["Belgelerim", "Analiz", "Maliyet & Uyari"], index=["Belgelerim", "Analiz", "Maliyet & Uyari"].index(st.session_state.nav), horizontal=True)
-st.session_state.nav = nav
+# --- SIDEBAR (YAN MENÜ) ---
+st.sidebar.title("🌍 Vize Uzmani Menü")
+secim = st.sidebar.radio("Git:", ["Hoş Geldiniz", "Belgelerim", "Analiz", "Maliyet & Uyarı"])
 
-# --- SAYFA 1 ---
-if nav == "Belgelerim":
+# --- HOŞ GELDİNİZ EKRANI ---
+if secim == "Hoş Geldiniz":
+    st.title("✈️ Vize Uzmanı Portalı'na Hoş Geldiniz!")
+    st.write("Bu uygulama ile vize süreçlerinizi kolayca planlayabilir, belge listenizi kontrol edebilir ve onay ihtimalinizi analiz edebilirsiniz.")
+    st.info("Başlamak için yan menüden 'Belgelerim' sekmesine geçebilirsiniz.")
+
+# --- DİĞER SAYFALAR ---
+elif secim == "Belgelerim":
     st.title("📄 Belgelerim")
-    ulke = st.selectbox("Ulke:", list(ulke_verileri.keys()))
+    ulke = st.selectbox("Ülke Seçiniz:", list(ulke_verileri.keys()))
+    st.session_state.ulke = ulke
+    
     secilenler = []
     cols = st.columns(3)
     for i, evrak in enumerate(tum_evraklar):
@@ -56,32 +59,31 @@ if nav == "Belgelerim":
             st.error("Eksik zorunlu belgeler var!")
         else:
             st.session_state.secilenler = secilenler
-            st.session_state.secilen_ulke = ulke
-            st.session_state.nav = "Analiz"
-            st.rerun()
+            st.success("Belgeler onaylandı! Yan menüden 'Analiz' sekmesine geçebilirsiniz.")
 
-# --- SAYFA 2 ---
-elif nav == "Analiz":
+elif secim == "Analiz":
     st.title("📊 Analiz Sonucu")
     if 'secilenler' in st.session_state:
-        ulke = st.session_state.secilen_ulke
+        ulke = st.session_state.ulke
         ihtimal = min(ulke_verileri[ulke]["onay"] + (len(st.session_state.secilenler) * 2), 98)
-        st.metric("Onay Ihtimali", f"%{ihtimal}")
+        st.metric("Onay İhtimali", f"%{ihtimal}")
         st.progress(ihtimal/100)
         
-        if st.button("Raporu Indir"):
+        if st.button("Raporu İndir"):
             pdf_dosyasi = pdf_olustur(ulke, st.session_state.secilenler, ihtimal, ulke_verileri[ulke])
             with open(pdf_dosyasi, "rb") as f:
-                st.download_button("Indir", f, file_name=pdf_dosyasi, mime="application/pdf")
+                st.download_button("İndir", f, file_name=pdf_dosyasi, mime="application/pdf")
     else:
-        st.warning("Once belgeleri secin!")
+        st.warning("Önce 'Belgelerim' kısmından seçim yapın!")
 
-# --- SAYFA 3 ---
-elif nav == "Maliyet & Uyari":
-    st.title("⚠️ Maliyet ve Yasal Uyari")
-    ulke = st.session_state.get('secilen_ulke', 'Almanya')
-    data = ulke_verileri[ulke]
-    st.info(f"Seçilen Ülke: {ulke}")
-    st.write(f"**Vize Harcı:** {data['harc']}€ | **Servis:** {data['servis']}€")
-    st.write(f"**Ekstralar:** {data['ekstra']}")
-    st.warning("Yalan beyan vize yasağına yol açar. Belgelerinizin doğruluğundan emin olun.")
+elif secim == "Maliyet & Uyarı":
+    st.title("⚠️ Maliyet ve Yasal Uyarı")
+    if 'ulke' in st.session_state:
+        ulke = st.session_state.ulke
+        data = ulke_verileri[ulke]
+        st.write(f"**Ülke:** {ulke}")
+        st.write(f"**Vize Harcı:** {data['harc']}€ | **Servis:** {data['servis']}€")
+        st.write(f"**Ekstralar:** {data['ekstra']}")
+        st.warning("Yalan beyan vize yasağına yol açar.")
+    else:
+        st.warning("Henüz bir ülke seçilmedi.")
