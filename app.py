@@ -22,35 +22,30 @@ def pdf_olustur(ulke, secilenler, ihtimal, data):
     pdf.output(file_name)
     return file_name
 
+# Sayfa Yapılandırması
 st.set_page_config(page_title="Vize Uzmanı", layout="wide")
 
-# ZENGİN VERİ TABANI
+# Veri Tabanı
 ulke_verileri = {
     "Almanya": {"onay": 85, "harc": 90, "servis": 30, "ekstra": "Kargo: 15€, Sigorta: 25€"},
     "İspanya": {"onay": 82, "harc": 90, "servis": 30, "ekstra": "Ekspres Fark: 40€, Sigorta: 20€"},
-    "İtalya": {"onay": 78, "harc": 80, "servis": 30, "ekstra": "Randevu Ücreti: 20€, Sigorta: 25€"},
-    "Fransa": {"onay": 75, "harc": 80, "servis": 30, "ekstra": "Kargo: 15€, Sigorta: 20€"},
-    "Hollanda": {"onay": 88, "harc": 90, "servis": 30, "ekstra": "Sigorta: 25€"},
-    "Yunanistan": {"onay": 92, "harc": 80, "servis": 30, "ekstra": "Sigorta: 20€"},
-    "Avusturya": {"onay": 80, "harc": 90, "servis": 30, "ekstra": "Sigorta: 22€"},
-    "Çekya": {"onay": 76, "harc": 80, "servis": 30, "ekstra": "Sigorta: 18€"}
+    "İtalya": {"onay": 78, "harc": 80, "servis": 30, "ekstra": "Randevu Ücreti: 20€, Sigorta: 25€"}
 }
-
-tum_evraklar = [
-    "Pasaport", "Sigorta Poliçesi", "Uçak Rezervasyonu", "Otel Rezervasyonu", 
-    "Banka Hesap Dökümü", "Maaş Bordrosu", "Tapu Fotokopisi", "Araç Ruhsatı",
-    "İşyeri İzin Belgesi", "Vergi Levhası", "Davetiye", "Fotoğraf", 
-    "Adli Sicil Kaydı", "Nüfus Kayıt Örneği", "Diploma"
-]
+tum_evraklar = ["Pasaport", "Sigorta Poliçesi", "Uçak Rezervasyonu", "Otel Rezervasyonu", "Banka Hesap Dökümü", "Maaş Bordrosu"]
 ZORUNLU = ["Pasaport", "Sigorta Poliçesi", "Uçak Rezervasyonu"]
 
-# YÖNLENDİRME MENÜSÜ
-st.sidebar.title("🌍 Vize Uzmanı Menü")
-secim = st.sidebar.radio("Sayfalar:", ["Hoş Geldiniz", "Belgelerim", "Analiz", "Maliyet & Uyarı"])
+# Otomatik Geçiş İçin Session State
+if 'nav' not in st.session_state:
+    st.session_state.nav = "Hoş Geldiniz"
 
+# Yan Menü (Sidebar)
+menu_options = ["Hoş Geldiniz", "Belgelerim", "Analiz", "Maliyet & Uyarı"]
+secim = st.sidebar.radio("Navigasyon:", menu_options, index=menu_options.index(st.session_state.nav), key="nav")
+
+# Sayfalar
 if secim == "Hoş Geldiniz":
-    st.title("✈️ Vize Uzmanı'na Hoş Geldiniz")
-    st.write("Profesyonel vize danışmanınızla tanışın. Belgelerinizi hazırlayın, onay ihtimalinizi ölçün.")
+    st.title("✈️ Vize Uzmanı Portalı")
+    st.write("Belgelerinizi hazırlayın, onay ihtimalinizi ölçün.")
 
 elif secim == "Belgelerim":
     st.title("📄 Belgelerim")
@@ -64,20 +59,20 @@ elif secim == "Belgelerim":
     
     if st.button("Analize Git ->"):
         if [b for b in ZORUNLU if b not in secilenler]:
-            st.error("❌ Eksik zorunlu belgeler: " + ", ".join([b for b in ZORUNLU if b not in secilenler]))
+            st.error("❌ Eksik zorunlu belgeler var!")
         else:
             st.session_state.secilenler = secilenler
-            st.success("Analize yönlendiriliyorsunuz...")
-            st.session_state.secim = "Analiz"
-            st.rerun() # Otomatik geçiş burada çalışıyor!
+            st.session_state.nav = "Analiz"
+            st.rerun()
 
 elif secim == "Analiz":
     st.title("📊 Analiz Sonucu")
     if 'secilenler' in st.session_state:
         ulke = st.session_state.ulke
-        ihtimal = min(ulke_verileri[ulke]["onay"] + (len(st.session_state.secilenler) * 1.5), 98)
+        ihtimal = min(ulke_verileri[ulke]["onay"] + (len(st.session_state.secilenler) * 2), 98)
         st.metric("Tahmini Onay İhtimali", f"%{round(ihtimal, 1)}")
         st.progress(ihtimal/100)
+        
         if st.button("Raporu İndir"):
             pdf_dosyasi = pdf_olustur(ulke, st.session_state.secilenler, round(ihtimal, 1), ulke_verileri[ulke])
             with open(pdf_dosyasi, "rb") as f:
@@ -86,19 +81,10 @@ elif secim == "Analiz":
         st.warning("Önce 'Belgelerim' sekmesinden seçim yapın!")
 
 elif secim == "Maliyet & Uyarı":
-    st.title("⚠️ Maliyet ve Konaklama Rehberi")
+    st.title("⚠️ Maliyet ve Uyarı")
     if 'ulke' in st.session_state:
-        ulke = st.session_state.ulke
-        data = ulke_verileri[ulke]
-        st.write(f"**Ülke:** {ulke}")
+        data = ulke_verileri[st.session_state.ulke]
+        st.write(f"**Ülke:** {st.session_state.ulke}")
         st.write(f"**Vize Harcı:** {data['harc']}€ | **Ekstralar:** {data['ekstra']}")
-        st.write("---")
-        st.subheader("💰 Ekonomik Konaklama (Ucuzdan Pahalıya)")
-        st.markdown("""
-        1. **Hosteller:** En ekonomik seçenek (Ort. 20-30€/gece).
-        2. **Öğrenci Yurtları:** Sezonluk uygun fiyatlar.
-        3. **Airbnb (Paylaşımlı Oda):** Yerel yaşam ve uygun fiyat.
-        4. **Bütçe Otelleri:** Kahvaltı dahil (Ort. 60-80€/gece).
-        """)
     else:
-        st.warning("Henüz bir ülke seçilmedi.")
+        st.warning("Ülke seçimi yapılmadı.")
