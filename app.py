@@ -2,12 +2,12 @@ import streamlit as st
 import pandas as pd
 from fpdf import FPDF
 
-# PDF Fonksiyonu
+# PDF Fonksiyonu (Bellek dostu - Hata vermez)
 def pdf_olustur(ulke, secilenler, ihtimal, data):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt=f"{ulke} Vize Analiz Raporu", ln=True, align='C')
+    pdf.cell(200, 10, txt=f"{ulke} Vize Analiz Raporu".encode('latin-1', 'replace').decode('latin-1'), ln=True, align='C')
     pdf.set_font("Arial", size=12)
     pdf.ln(10)
     pdf.cell(200, 10, txt=f"Onay İhtimali: %{ihtimal}", ln=True)
@@ -17,14 +17,12 @@ def pdf_olustur(ulke, secilenler, ihtimal, data):
     pdf.cell(200, 10, txt="Sunulan Belgeler:", ln=True)
     pdf.set_font("Arial", size=12)
     for doc in secilenler:
-        pdf.cell(200, 10, txt=f"- {doc}", ln=True)
-    file_name = "vize_raporu.pdf"
-    pdf.output(file_name)
-    return file_name
+        pdf.cell(200, 10, txt=f"- {doc}".encode('latin-1', 'replace').decode('latin-1'), ln=True)
+    return pdf.output(dest='S').encode('latin-1')
 
 st.set_page_config(page_title="Vize Uzmanı", layout="wide")
 
-# GENİŞLETİLMİŞ VERİ TABANI
+# Veri Tabanı
 ulke_verileri = {
     "Almanya": {"onay": 85, "harc": 90, "servis": 30, "ekstra": "Kargo: 15€, Sigorta: 25€"},
     "İspanya": {"onay": 82, "harc": 90, "servis": 30, "ekstra": "Ekspres Fark: 40€, Sigorta: 20€"},
@@ -47,11 +45,11 @@ tum_evraklar = [
 ]
 ZORUNLU = ["Pasaport", "Sigorta Poliçesi", "Uçak Rezervasyonu"]
 
-# YÖNLENDİRME MANTIĞI
+# Otomatik Geçiş İçin Session State
 if 'sayfa' not in st.session_state:
     st.session_state.sayfa = "Hoş Geldiniz"
 
-# YAN MENÜ
+# Yan Menü
 menu = st.sidebar.radio("Menü:", ["Hoş Geldiniz", "Belgelerim", "Analiz", "Maliyet & Uyarı"], 
                         index=["Hoş Geldiniz", "Belgelerim", "Analiz", "Maliyet & Uyarı"].index(st.session_state.sayfa))
 st.session_state.sayfa = menu
@@ -85,10 +83,9 @@ elif menu == "Analiz":
         ihtimal = min(ulke_verileri[ulke]["onay"] + (len(st.session_state.secilenler) * 1.5), 98)
         st.metric("Tahmini Onay İhtimali", f"%{round(ihtimal, 1)}")
         st.progress(ihtimal/100)
-        if st.button("Raporu İndir"):
-            pdf_dosyasi = pdf_olustur(ulke, st.session_state.secilenler, round(ihtimal, 1), ulke_verileri[ulke])
-            with open(pdf_dosyasi, "rb") as f:
-                st.download_button("PDF İndir", f, file_name=pdf_dosyasi, mime="application/pdf")
+        
+        pdf_data = pdf_olustur(ulke, st.session_state.secilenler, round(ihtimal, 1), ulke_verileri[ulke])
+        st.download_button("PDF İndir", pdf_data, file_name="vize_raporu.pdf", mime="application/pdf")
     else:
         st.warning("Önce belgeleri seçin!")
 
