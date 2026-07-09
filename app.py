@@ -1,67 +1,78 @@
 import streamlit as st
-import pandas as pd
-from fpdf import FPDF
 
-# PDF Fonksiyonu (Hata payını sıfıra indiren basit yapı)
-def pdf_olustur(ulke, secilenler, ihtimal, data):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt=f"{ulke} Vize Raporu", ln=True, align='C')
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt=f"Onay Ihtimali: %{ihtimal}", ln=True)
-    for doc in secilenler:
-        pdf.cell(200, 10, txt=f"- {doc}", ln=True)
-    return pdf.output(dest='S').encode('latin-1')
+# Sayfa Yapılandırması
+st.set_page_config(page_title="Vize Uzmanı", layout="wide")
 
-st.set_page_config(layout="wide")
-
-# Veri Tabanı
+# Veri Tabanı (Ülke Sayısı Artırıldı)
 ulke_verileri = {
-    "Almanya": {"onay": 85, "harc": 90, "servis": 30, "ekstra": "Kargo: 15€, Sigorta: 25€"},
-    "İspanya": {"onay": 82, "harc": 90, "servis": 30, "ekstra": "Ekspres Fark: 40€, Sigorta: 20€"},
-    "İtalya": {"onay": 78, "harc": 80, "servis": 30, "ekstra": "Randevu Ücreti: 20€, Sigorta: 25€"}
+    "Almanya": {"onay": 85, "harc": 90, "servis": 30},
+    "İspanya": {"onay": 82, "harc": 90, "servis": 30},
+    "İtalya": {"onay": 78, "harc": 80, "servis": 30},
+    "Fransa": {"onay": 75, "harc": 80, "servis": 30},
+    "Hollanda": {"onay": 88, "harc": 90, "servis": 30},
+    "Yunanistan": {"onay": 92, "harc": 80, "servis": 30},
+    "Avusturya": {"onay": 80, "harc": 90, "servis": 30},
+    "Belçika": {"onay": 70, "harc": 90, "servis": 30},
+    "İsveç": {"onay": 83, "harc": 90, "servis": 30},
+    "İsviçre": {"onay": 86, "harc": 95, "servis": 30}
 }
-tum_evraklar = ["Pasaport", "Sigorta Poliçesi", "Uçak Rezervasyonu", "Otel Rezervasyonu", "Banka Hesap Dökümü", "Maaş Bordrosu"]
-ZORUNLU = ["Pasaport", "Sigorta Poliçesi", "Uçak Rezervasyonu"]
 
-# Yönlendirme Kontrolü
-if 'sayfa' not in st.session_state: st.session_state.sayfa = "Hoş Geldiniz"
+# Dil Seçenekleri ve Metinler
+dil_secenegi = st.sidebar.selectbox("Dil / Language:", ["Türkçe", "English"])
+texts = {
+    "Türkçe": {"başlık": "Vize Uzmanı", "seç": "Ülke Seçiniz:", "analiz": "Analize Git", "uyarı": "Vize Ücretleri ve Detaylar için Tıklayınız"},
+    "English": {"başlık": "Visa Expert", "seç": "Select Country:", "analiz": "Go to Analysis", "uyarı": "Click for Visa Fees and Details"}
+}
+txt = texts[dil_secenegi]
 
-# Yan Menü
-secim = st.sidebar.radio("Navigasyon:", ["Hoş Geldiniz", "Belgelerim", "Analiz", "Maliyet & Uyarı"], 
-                         index=["Hoş Geldiniz", "Belgelerim", "Analiz", "Maliyet & Uyarı"].index(st.session_state.sayfa))
-st.session_state.sayfa = secim
+st.title(f"🌍 {txt['başlık']}")
 
-# Sayfa İçerikleri
-if secim == "Hoş Geldiniz":
-    st.title("Vize Uzmanı Portalı")
-    st.write("Başlamak için yan menüyü kullanın.")
+# Session State Yönetimi
+if 'sayfa' not in st.session_state: st.session_state.sayfa = "Giriş"
+if 'ulke' not in st.session_state: st.session_state.ulke = "Almanya"
 
-elif secim == "Belgelerim":
-    st.title("📄 Belgelerim")
-    ulke = st.selectbox("Ülke:", list(ulke_verileri.keys()))
+# --- SAYFALAR ---
+# 1. Giriş ve Belge Seçimi
+if st.session_state.sayfa == "Giriş":
+    ulke = st.selectbox(txt['seç'], list(ulke_verileri.keys()))
     st.session_state.ulke = ulke
     
-    secilenler = [e for e in tum_evraklar if st.checkbox(e, key=e)]
+    st.write("Belgelerinizi işaretleyin:")
+    evraklar = ["Pasaport", "Sigorta", "Uçak", "Otel", "Banka", "Maaş"]
+    secilenler = [e for e in evraklar if st.checkbox(e)]
     
-    if st.button("Analize Git"):
-        if any(z not in secilenler for z in ZORUNLU):
-            st.error("Zorunlu belgeler eksik!")
-        else:
-            st.session_state.secilenler = secilenler
-            st.session_state.sayfa = "Analiz"
-            st.rerun()
+    if st.button(txt['analiz']):
+        st.session_state.secilenler = secilenler
+        st.session_state.sayfa = "Analiz"
+        st.rerun()
 
-elif secim == "Analiz":
-    st.title("📊 Analiz Sonucu")
-    if 'secilenler' in st.session_state:
-        ulke = st.session_state.ulke
-        ihtimal = min(ulke_verileri[ulke]["onay"] + (len(st.session_state.secilenler) * 2), 98)
-        st.metric("Tahmini Onay", f"%{ihtimal}")
-        
-        # PDF İndirme (Dosya oluşturma hatasını engellemek için doğrudan buton)
-        pdf_data = pdf_olustur(ulke, st.session_state.secilenler, ihtimal, ulke_verileri[ulke])
-        st.download_button("PDF İndir", pdf_data, "rapor.pdf", "application/pdf")
+# 2. Analiz Sayfası
+elif st.session_state.sayfa == "Analiz":
+    ulke = st.session_state.ulke
+    ihtimal = min(ulke_verileri[ulke]["onay"] + (len(st.session_state.get('secilenler', [])) * 2), 99)
+    
+    st.metric("Vize Onay İhtimali", f"%{ihtimal}")
+    
+    if ihtimal > 90:
+        st.success("Vize alma olasılığınız oldukça yüksek!")
+        if st.button(txt['uyarı']):
+            st.session_state.sayfa = "Detay"
+            st.rerun()
     else:
-        st.warning("Önce belgeleri seçin!")
+        st.info("Başvurunuz inceleniyor.")
+        
+    if st.button("Geri Dön"):
+        st.session_state.sayfa = "Giriş"
+        st.rerun()
+
+# 3. Detay ve Ücretler
+elif st.session_state.sayfa == "Detay":
+    ulke = st.session_state.ulke
+    data = ulke_verileri[ulke]
+    st.subheader(f"{ulke} - Vize Ücret Bilgileri")
+    st.write(f"Vize Harcı: {data['harc']}€ | Servis Bedeli: {data['servis']}€")
+    st.write("Dikkat etmeniz gerekenler: Pasaport sürenizin 6 ay geçerli olduğundan emin olun.")
+    
+    if st.button("Ana Sayfaya Dön"):
+        st.session_state.sayfa = "Giriş"
+        st.rerun()
