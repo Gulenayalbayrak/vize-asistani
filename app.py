@@ -40,10 +40,18 @@ elif st.session_state.sayfa == "Seçim":
     
     col1, col2 = st.columns(2)
     with col1:
-        st.session_state.secilenler = [e for e in tum_evraklar if st.checkbox(e, key=e)]
+        st.subheader("Gerekli Belgeler")
+        st.session_state.secilenler = [e for e in tum_evraklar if st.checkbox(e, key=f"doc_{e}")]
     with col2:
-        st.session_state.risk_puani = sum([puan for soru, puan in risk_sorulari.items() if st.checkbox(soru)])
-        st.session_state.aktif_riskler = [soru for soru, puan in risk_sorulari.items() if st.checkbox(soru, key=f"check_{soru}")]
+        st.subheader("⚠️ Risk Soruları")
+        aktifler = []
+        puan = 0
+        for soru, deger in risk_sorulari.items():
+            if st.checkbox(soru, key=f"risk_{soru}"):
+                aktifler.append(soru)
+                puan += deger
+        st.session_state.aktif_riskler = aktifler
+        st.session_state.risk_puani = puan
         
     if st.button(txt['analiz']):
         st.session_state.sayfa = "Analiz"
@@ -55,8 +63,9 @@ elif st.session_state.sayfa == "Analiz":
     st.metric("Onay İhtimali", f"%{max(ihtimal, 5)}")
     
     if ihtimal < 80:
-        st.write(f"**{txt['neden']}**")
-        for risk in st.session_state.aktif_riskler: st.error(f"- {risk}")
+        st.warning(f"**{txt['neden']}**")
+        for risk in st.session_state.get('aktif_riskler', []):
+            st.error(f"- {risk}")
         
     if st.button(txt['detay']):
         st.session_state.sayfa = "Detay"
