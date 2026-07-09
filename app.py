@@ -22,7 +22,8 @@ txt = {
         "strateji": "Randevu ve Başvuru Rehberi",
         "detay_liste": "- Vize Ücreti: 90€ (Hizmet bedeli hariçtir).\n- Randevu takibi: Gece 00-02 arası sistemleri kontrol edin.\n- Finansal istikrar: Son 3 aylık hesap hareketleri düzenli olmalı.\n- Evrak düzeni: Asıllar ve fotokopiler ayrı dosyalarda olmalı.\n- İkametgah: Yetkili aracı kurumun doğru seçildiğinden emin olun.",
         "başarı": "Vize alma olasılığınız oldukça yüksek, başvurunuz kolaylıkla onaylanabilir.",
-        "tavsiye": "Başvurunuzu daha da güçlendirmek için şu belgeleri eklemeyi değerlendirebilirsiniz:"
+        "tavsiye": "Başvurunuzu daha da güçlendirmek için şu belgeleri eklemeyi değerlendirebilirsiniz:",
+        "hata_zorunlu": "❌ Lütfen yıldızlı (*) olan tüm zorunlu belgeleri seçiniz!"
     },
     "English": {
         "başlık": "Visa Expert Portal", "başla": "Start Application", "seçim": "Documents & Risk", 
@@ -36,7 +37,8 @@ txt = {
         "strateji": "Appointment and Application Guide",
         "detay_liste": "- Visa Fee: 90€ (Service fee excluded).\n- Appointment tracking: Check systems between 00:00-02:00 AM.\n- Financial stability: Consistent records for the last 3 months.\n- Document order: Originals and copies should be separated.\n- Jurisdiction: Verify embassy rules for your residence.",
         "başarı": "Your visa probability is quite high, your application can be easily approved.",
-        "tavsiye": "To strengthen your application, consider adding these documents:"
+        "tavsiye": "To strengthen your application, consider adding these documents:",
+        "hata_zorunlu": "❌ Please select all mandatory (*) documents!"
     },
     "العربية": {
         "başlık": "بوابة خبير التأشيرات", "başla": "ابدأ الطلب", "seçim": "المستندات والمخاطر", 
@@ -50,7 +52,8 @@ txt = {
         "strateji": "دليل المواعيد والتقديم",
         "detay_liste": "- رسوم التأشيرة: 90 يورو (بدون رسوم الخدمة).\n- تتبع المواعيد: تحقق بين 12:00-02:00 صباحاً.\n- الاستقرار المالي: سجلات آخر 3 أشهر.\n- ترتيب المستندات: حافظ على ترتيب الملفات.\n- الاختصاص القضائي: تحقق من قواعد السفارة.",
         "başarı": "فرصتك في الحصول على التأشيرة عالية جداً، ويمكن الموافقة على طلبك بسهولة.",
-        "tavsiye": "لتعزيز طلبك، فكر في إضافة هذه المستندات:"
+        "tavsiye": "لتعزيز طلبك، فكر في إضافة هذه المستندات:",
+        "hata_zorunlu": "❌ يرجى اختيار جميع المستندات الإلزامية (*)!"
     }
 }[dil]
 
@@ -73,5 +76,32 @@ elif st.session_state.sayfa == "Seçim":
         st.subheader(txt['risk_başlık'])
         st.session_state.aktif_riskler = [s for s in txt['riskler'].keys() if st.checkbox(s, key=f"chk_{s}")]
         st.session_state.risk_puani = sum([txt['riskler'][s] for s in st.session_state.aktif_riskler])
+    
     if st.button(txt['analiz']):
-        st.session_state.sayfa = "Analiz"; st.rerun()
+        zorunlular = [e for e in txt['evraklar'] if "*" in e]
+        if all(z in st.session_state.secilenler for z in zorunlular):
+            st.session_state.sayfa = "Analiz"; st.rerun()
+        else:
+            st.error(txt['hata_zorunlu'])
+
+elif st.session_state.sayfa == "Analiz":
+    st.title(f"📊 {txt['sonuç']}")
+    ihtimal = min(85 + (len(st.session_state.get('secilenler', [])) * 2) - st.session_state.risk_puani, 99)
+    st.metric("Onay İhtimali", f"%{max(ihtimal, 5)}")
+    
+    if ihtimal >= 80:
+        st.success(txt['başarı'])
+        eksikler = [e for e in txt['evraklar'] if e not in st.session_state.get('secilenler', [])]
+        if eksikler: st.info(f"{txt['tavsiye']} {', '.join(eksikler[:3])}")
+    else:
+        st.warning(txt['uyarı'])
+        for r in st.session_state.get('aktif_riskler', []): st.error(f"❌ {r} -> **{txt['çözümler'][r]}**")
+        
+    if st.button(txt['detay']):
+        st.session_state.sayfa = "Detay"; st.rerun()
+
+elif st.session_state.sayfa == "Detay":
+    st.title(f"💡 {txt['strateji']}")
+    st.markdown(txt['detay_liste'])
+    if st.button("Ana Sayfa"):
+        st.session_state.sayfa = "Giriş"; st.rerun()
