@@ -6,7 +6,7 @@ st.set_page_config(page_title="Vize Uzmanı", layout="wide")
 st.markdown("---")
 col_dil1, col_dil2 = st.columns([8, 2])
 with col_dil2:
-    dil = st.selectbox("🌐 Dil Seçiniz:", ["Türkçe", "English"])
+    dil = st.selectbox("🌐 Dil Seçiniz / Select Language / اختر اللغة:", ["Türkçe", "English", "العربية"])
 st.markdown("---")
 
 txt = {
@@ -28,6 +28,16 @@ txt = {
             "Daha önce vize reddi aldınız mı?": "Prepare a cover letter explaining the reason for your previous visa refusal.",
             "Düzenli geliriniz yok mu?": "Provide proof of additional income or a sponsor document.",
             "Pasaport süresi 6 aydan az mı?": "Renew your passport; it must be valid for at least 6 months."
+        }
+    },
+    "العربية": {
+        "başlık": "بوابة خبير التأشيرات", "başla": "ابدأ الطلب", "seçim": "المستندات والمخاطر", 
+        "analiz": "اذهب إلى التحليل", "sonuç": "نتيجة التحليل", "detay": "التفاصيل والموعد",
+        "uyarı": "احتمالية الحصول على التأشيرة منخفضة للأسباب التالية. نوصي بإصلاح هذه المشكلات قبل المتابعة:",
+        "çözümler": {
+            "Daha önce vize reddi aldınız mı?": "قم بإعداد خطاب يوضح سبب رفض التأشيرة السابق.",
+            "Düzenli geliriniz yok mu?": "قدم إثبات دخل إضافي أو مستند كفيل.",
+            "Pasaport süresi 6 aydan az mı?": "قم بتجديد جواز سفرك؛ يجب أن يكون صالحًا لمدة 6 أشهر على الأقل."
         }
     }
 }[dil]
@@ -68,7 +78,7 @@ elif st.session_state.sayfa == "Seçim":
 
 elif st.session_state.sayfa == "Analiz":
     st.title(f"📊 {txt['sonuç']}")
-    ihtimal = min(ulke_verileri[st.session_state.ulke]["onay"] + (len(st.session_state.get('secilenler', [])) * 2) - st.session_state.risk_puani, 99)
+    ihtimal = min(ulke_verileri[st.session_state.ulke]["onay"] + (len(st.session_state.secilenler) * 2) - st.session_state.risk_puani, 99)
     st.metric("Onay İhtimali", f"%{max(ihtimal, 5)}")
     
     if ihtimal < 80:
@@ -85,14 +95,5 @@ elif st.session_state.sayfa == "Detay":
     data = ulke_verileri[st.session_state.ulke]
     st.write(f"### 💶 Vize Ücretleri")
     st.write(f"Vize Harcı: {data['harc']}€ | Servis Bedeli: {data['servis']}€")
-    st.write("### 📝 Randevu ve Başvuru Stratejileri")
-    st.markdown("""
-    1. **Randevu Takibi:** Konsoloslukların randevu sistemleri genellikle gece 00:00 ile 02:00 arasında güncellenir.
-    2. **Finansal Hazırlık:** Banka dökümünüzde son 3 aya ait hareketlerin istikrarlı olduğundan emin olun.
-    3. **Belge Kalitesi:** Tüm belgelerin fotokopilerini ve asıllarını ayrı ayrı dosyalayın.
-    4. **İkametgah:** İkamet ettiğiniz ile bakan yetkili aracı kurumu mutlaka doğru seçin.
-    5. **Seyahat Planı:** Uçak ve otel rezervasyonlarınızın 'gerçek' ve 'teyit edilebilir' olduğundan emin olun.
-    """)
-    if st.button("Ana Sayfa"):
-        st.session_state.sayfa = "Giriş"
-        st.rerun()
+    st.markdown("### 📝 Randevu ve Başvuru Stratejileri")
+    st.markdown
